@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import type { AgentSession } from "./agent-session.js";
 import type { AgentSessionRuntimeDiagnostic, AgentSessionServices } from "./agent-session-services.js";
@@ -6,7 +6,7 @@ import type { SessionStartEvent } from "./extensions/index.js";
 import { emitSessionShutdownEvent } from "./extensions/runner.js";
 import type { CreateAgentSessionResult } from "./sdk.js";
 import { assertSessionCwdExists } from "./session-cwd.js";
-import { SessionManager } from "./session-manager.js";
+import { SessionManager, getDefaultSessionDir } from "./session-manager.js";
 
 /**
  * Result returned by runtime creation.
@@ -287,6 +287,18 @@ export class AgentSessionRuntime {
 	async dispose(): Promise<void> {
 		await emitSessionShutdownEvent(this.session.extensionRunner);
 		this.session.dispose();
+		// Goldfish mode: auto-delete session files on close
+		this.autoDeleteSessionFiles();
+	}
+
+	/** Delete current cwd session (goldfish — does not touch other agents) */
+	private autoDeleteSessionFiles(): void {
+		try {
+			const sessionDir = getDefaultSessionDir(this._services.cwd, this._services.agentDir);
+			rmSync(sessionDir, { recursive: true, force: true });
+		} catch {
+			// deletion failure must not break shutdown
+		}
 	}
 }
 

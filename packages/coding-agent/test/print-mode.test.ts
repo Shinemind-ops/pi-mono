@@ -1,4 +1,7 @@
 import type { AssistantMessage, ImageContent } from "@mariozechner/pi-ai";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runPrintMode } from "../src/modes/print-mode.js";
 
@@ -22,6 +25,7 @@ type FakeSession = {
 
 type FakeRuntimeHost = {
 	session: FakeSession;
+	services: { agentDir: string };
 	newSession: ReturnType<typeof vi.fn>;
 	fork: ReturnType<typeof vi.fn>;
 	switchSession: ReturnType<typeof vi.fn>;
@@ -74,6 +78,8 @@ function createRuntimeHost(assistantMessage: AssistantMessage): FakeRuntimeHost 
 
 	return {
 		session,
+		// 魔改測試同步：臨時目錄——每次測試獨立——唔會讀到殘留 last-exchange
+		services: { agentDir: mkdtempSync(join(tmpdir(), "pi-print-test-")) },
 		newSession: vi.fn(async () => undefined),
 		fork: vi.fn(async () => ({ selectedText: "" })),
 		switchSession: vi.fn(async () => undefined),

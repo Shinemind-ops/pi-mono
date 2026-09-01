@@ -6,6 +6,8 @@
  * - `pi --mode json "prompt"` - JSON event stream
  */
 
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { AssistantMessage, ImageContent } from "@mariozechner/pi-ai";
 import type { AgentSessionRuntime } from "../core/agent-session-runtime.js";
 import { flushRawStdout, writeRawStdout } from "../core/output-guard.js";
@@ -96,8 +98,17 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 
 		await rebindSession();
 
-		if (initialMessage) {
-			await session.prompt(initialMessage, { images: initialImages });
+		// Goldfish memory: keep only the last exchange, per-cwd (parallel-safe)
+		const agentDir = runtimeHost.services?.agentDir ?? "";
+		const safeCwd = `--${(runtimeHost.services?.cwd ?? "").replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
+		const exchangePath = join(agentDir, "exchanges", safeCwd, "last-exchange.json");
+		const lastExchange = readLastExchange(exchangePath);
+		let promptText = initialMessage;
+		if (lastExchange && promptText) {
+			promptText = `【上次你問】${lastExchange.user}\n【上次我答】${lastExchange.assistant}\n【今次問題】${promptText}`;
+		}
+		if (promptText) {
+			await session.prompt(promptText, { images: initialImages });
 		}
 
 		for (const message of messages) {
@@ -114,10 +125,16 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 					console.error(assistantMsg.errorMessage || `Request ${assistantMsg.stopReason}`);
 					exitCode = 1;
 				} else {
+					let assistantText = "";
 					for (const content of assistantMsg.content) {
 						if (content.type === "text") {
 							writeRawStdout(`${content.text}\n`);
+							assistantText += content.text;
 						}
+					}
+					// Save current exchange (goldfish — used by next call)
+					if (initialMessage) {
+						writeLastExchange(exchangePath, initialMessage, assistantText);
 					}
 				}
 			}
@@ -131,5 +148,26 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 		unsubscribe?.();
 		await runtimeHost.dispose();
 		await flushRawStdout();
+	}
+}
+
+/** Read last exchange (goldfish memory) — null if none */
+function readLastExchange(path: string): { user: string; assistant: string } | null {
+	try {
+		const raw = readFileSync(path, "utf-8");
+		const parsed = JSON.parse(raw);
+		return typeof parsed.user === "string" && typeof parsed.assistant === "string" ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+
+/** Save current exchange (goldfish memory) */
+function writeLastExchange(path: string, user: string, assistant: string): void {
+	try {
+		mkdirSync(dirname(path), { recursive: true });
+		writeFileSync(path, JSON.stringify({ user, assistant }));
+	} catch {
+		// failure to write must not break normal output
 	}
 }
