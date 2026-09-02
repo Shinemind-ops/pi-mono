@@ -1,8 +1,90 @@
 # pi-goldfish-advisor (軍師)
 
-A fork of [pi](https://github.com/sysid/pi-mono) — an ultra-lightweight **strategic advisor (軍師)** mode.
-
+> **FOR AGENTS. NOT FOR HUMANS.** A fork of [pi](https://github.com/sysid/pi-mono) — an ultra-lightweight **strategic advisor (軍師)** that exists to be **called by other agents**, not to be chatted with by people.
+>
 > **For agents that need a brain, not a body. Ask. Get precise guidance. Forget. Move on.**
+
+---
+
+## ⚠️ Who is this for? (Read this first)
+
+**This is an advisor FOR AGENTS — including subordinate/delegated agents.** It is designed to be called *by another agent* (an "executor agent") from its terminal/tool layer. Humans *can* use it from a CLI, but that is not the point — if you are a human who wants a chat, use ChatGPT/Claude/Kimi directly.
+
+**The intended user is an agent that:**
+- has a terminal / subprocess / tool-calling ability, and
+- needs strategic guidance it cannot produce with its own cheap brain.
+
+---
+
+## The intended architecture: brain division (腦力分工)
+
+This fork exists to make one specific architecture cheap and practical:
+
+| Role | Which brain | Job |
+|---|---|---|
+| **軍師 (this fork)** | **The most intelligent, expensive flagship model** — GLM flagship, Claude flagship, GPT flagship, Kimi flagship | **Think.** Give direction, plans, decisions, reviews. Never executes. |
+| **Executor agent (the caller)** | **The cheapest brain available** — free APIs, quantized open-source local models | **Do.** Execute commands, write code, move files, report back. |
+
+**Why split brains like this?** Flagship tokens are expensive — you do not want them burned inside a long session that grows forever. 軍師 gives the expensive brain a **flat, tiny token cost per question** (~98% cheaper than a full session by the 10th call), so you can afford to ask the smartest model as often as you like. The executor's cheap brain does the grunt work and only escalates thinking to 軍師.
+
+**The recommended loop:**
+
+```
+Executor (cheap brain)  ──1. task / question──▶  軍師 (flagship brain)
+       ▲                                              │
+       └────────3. precise guidance ◀────────────────┘
+       │
+       └── 2. executes, then reports progress back → 軍師 (next question)
+```
+
+---
+
+## The goldfish compensation protocol
+
+軍師 has **goldfish memory**: it only carries the **last exchange** (your previous question + its previous answer) into the next call. It literally cannot remember the question before the last one. That is a feature (flat token cost), and it has a simple fix:
+
+> **Executor agents cancel out the goldfish brain by bringing context on every call.**
+
+Each time you ask 軍師, include in the prompt:
+1. **Task goal** — what you are ultimately trying to achieve
+2. **Current progress** — what has been done so far
+3. **Where you are stuck** — the specific decision/question
+
+Example call pattern:
+
+```
+Goal: migrate the auth module to v2.
+Done: extracted the interface, updated 3 of 8 call sites.
+Stuck: whether to keep the legacy fallback for old tokens.
+Question: ...
+```
+
+With this protocol, 軍師 always has the context it needs even though its memory is only two sentences long. **The executor does the remembering; 軍師 does the thinking.**
+
+---
+
+## Platform support
+
+軍師 is a **pure CLI** — any agent that can run a terminal command or subprocess can call it. No SDK, no server, no platform-specific integration needed. Known/verified agent platforms it works with:
+
+- **OpenClaw** — terminal tool → `node .../cli.js -p "..." --model <flagship>`
+- **Hermes Agent** — terminal tool → `node .../cli.js -p "..." --model <flagship>`
+- **qM** — subprocess/terminal → `node .../cli.js -p "..." --model <flagship>`
+- **Codex** — bash tool → `node .../cli.js -p "..." --model <flagship>`
+- **Claude Code** — Bash tool → `node .../cli.js -p "..." --model <flagship>`
+- **DeepSeek Harness** — subprocess → `node .../cli.js -p "..." --model <flagship>`
+
+Generic integration from any agent (Python subprocess):
+
+```python
+import subprocess
+answer = subprocess.run(
+    ["node", "/path/to/pi/packages/coding-agent/dist/cli.js",
+     "-p", "Goal: ... Done: ... Stuck: ... Question: ...",
+     "--model", "your-flagship-model"],
+    capture_output=True, text=True
+).stdout
+```
 
 ---
 
@@ -32,7 +114,7 @@ The system prompt is trimmed to ~112 tokens and reshaped into a pure advisor: di
 
 ### 3. Goldfish memory (token-cheap by design)
 
-Only the **last exchange** (your previous question + our previous answer) is carried into the next call. Anything older is dropped immediately — **it cannot remember the sentence before the previous one**. Memory never grows; token cost never grows. Measured: ~98% token savings vs a full-session agent by the 10th call.
+Only the **last exchange** (your previous question + our previous answer) is carried into the next call. Anything older is dropped immediately — **it cannot remember the sentence before the previous one**. Memory never grows; token cost never grows. Measured: ~98% token savings vs a full-session agent by the 10th call. Pair it with the **goldfish compensation protocol** above and the short memory stops mattering.
 
 ### 4. Compliance-first design (the reason this fork exists)
 
@@ -47,7 +129,8 @@ npm install
 npm run build
 
 # Advisor (print) mode — goldfish memory, auto-deleted sessions
-node packages/coding-agent/dist/cli.js -p "What is the fastest way to validate a token budget?" --model deepseek-chat
+# Use your FLAGSHIP model here (see "brain division" above)
+node packages/coding-agent/dist/cli.js -p "What is the fastest way to validate a token budget?" --model <flagship-model>
 ```
 
 ### Memory model
@@ -83,9 +166,89 @@ MIT — see [LICENSE](LICENSE). This is a fork of [pi](https://github.com/sysid/
 
 # 軍師（pi-goldfish-advisor）——極輕量戰略顧問模式
 
-fork 自 [pi](https://github.com/sysid/pi-mono)——將通用 Agent 變成**極輕量「軍師」（戰略顧問）**。
-
+> **FOR AGENTS. 唔係俾人類用。** fork 自 [pi](https://github.com/sysid/pi-mono)——將通用 Agent 變成**極輕量「軍師」（戰略顧問）**——存在目的係**俾其他 Agent call**，唔係俾人傾偈。
+>
 > **Agent 需要嘅係「腦」——唔係「身體」。問。攞到精準指引。忘記。繼續。**
+
+## ⚠️ 呢個係俾邊個用？（先讀呢度）
+
+**呢個係俾 AGENT 用嘅軍師——包括下屬 Agent／分身 Agent。** 設計用途係俾另一個「執行者 Agent」喺自己嘅 terminal／工具層 call 佢。人類用 CLI 都得——但唔係重點——人類想傾偈用 ChatGPT／Claude／Kimi 就得，唔使裝呢個。
+
+**目標用家係一個咁嘅 Agent：**
+- 有 terminal／subprocess／tool-calling 能力，而且
+- 需要自己個平價腦畀唔出嘅戰略指引
+
+---
+
+## 建議用法：腦力分工（呢個 fork 存在嘅原因）
+
+| 角色 | 用咩腦 | 做咩 |
+|---|---|---|
+| **軍師（呢個 fork）** | **最高智力嘅貴腦旗艦**——GLM 旗艦、Claude 旗艦、GPT 旗艦、Kimi 旗艦 | **諗。** 俾方向、計劃、決策、覆核。永遠唔郁手做。 |
+| **執行者 Agent（call 嗰個）** | **最平嘅腦**——免費 API、量化版開源本地部署模型 | **做。** 執行指令、寫 code、郁檔案、匯報返嚟。 |
+
+**點解要咁分工？** 旗艦 token 貴——唔應該喺一條無限增長嘅 session 入面燒。軍師將貴腦嘅成本壓到**每問一次固定、極平**（第 10 次 call 比完整 session 慳 ~98%）——所以你問得幾密都負擔得起。執行者用平腦做粗重嘢，淨係要諗嘢先升級 call 軍師。
+
+**建議循環：**
+
+```
+執行者（平腦）  ──1. 任務／問題──▶  軍師（旗艦貴腦）
+       ▲                                  │
+       └────3. 精準指引 ◀────────────────┘
+       │
+       └── 2. 執行完 → 匯報進度 → 再問軍師
+```
+
+---
+
+## 金魚腦補償協定
+
+軍師係**金魚腦**：每次 call 淨係帶「最近 2 句」（你上次問＋我上次答）入下一個 call——**連「上上一句」都記唔到**。呢個係 feature（token 成本固定），而且補救好簡單：
+
+> **執行者 Agent 每次 call 都帶埋 context——就抵消咗軍師嘅金魚腦。**
+
+每次問軍師，prompt 入面包含三樣：
+1. **任務目標**——你最終想做咩
+2. **目前進度**——已經做咗啲咩
+3. **卡喺邊**——需要佢決定嘅具體問題
+
+**Call 嘅格式範例：**
+
+```
+Goal: 將 auth module 遷移到 v2
+Done: 抽咗 interface，更新咗 3/8 個 call sites
+Stuck: 舊 token 要唔要保留 legacy fallback
+Question: ...
+```
+
+跟住呢個協定——軍師雖然記憶得 2 句，但永遠有你俾嘅 context。**執行者負責記，軍師負責諗。**
+
+---
+
+## 平台適配
+
+軍師係**純 CLI**——任何識行 terminal command／subprocess 嘅 Agent 都 call 到。唔使 SDK、唔使 server、唔使平台專屬整合。已知／實測可用嘅 Agent 平台：
+
+- **OpenClaw** — terminal tool → `node .../cli.js -p "..." --model <旗艦>`
+- **Hermes Agent** — terminal tool → `node .../cli.js -p "..." --model <旗艦>`
+- **qM** — subprocess／terminal → `node .../cli.js -p "..." --model <旗艦>`
+- **Codex** — bash tool → `node .../cli.js -p "..." --model <旗艦>`
+- **Claude Code** — Bash tool → `node .../cli.js -p "..." --model <旗艦>`
+- **DeepSeek Harness** — subprocess → `node .../cli.js -p "..." --model <旗艦>`
+
+任何 Agent 通用整合（Python subprocess 範例）：
+
+```python
+import subprocess
+answer = subprocess.run(
+    ["node", "/path/to/pi/packages/coding-agent/dist/cli.js",
+     "-p", "Goal: ... Done: ... Stuck: ... Question: ...",
+     "--model", "你嘅旗艦模型"],
+    capture_output=True, text=True
+).stdout
+```
+
+---
 
 ## 四大支柱
 
@@ -98,7 +261,7 @@ fork 自 [pi](https://github.com/sysid/pi-mono)——將通用 Agent 變成**極
 - 每次提問 token 成本**固定**——永唔會因對話歷史膨脹
 
 ### 3. 金魚記憶（慳 token 嘅設計）
-每次 call 只帶「**最近 2 句**」（你上次問＋我上次答）——再舊即忘——**連「上上一句」都記唔到**。記憶永不增長＝token 永唔增長。實測：第 10 次 call——比完整 session Agent **慳 ~98%** tokens。
+每次 call 只帶「**最近 2 句**」（你上次問＋我上次答）——再舊即忘——**連「上上一句」都記唔到**。記憶永不增長＝token 永唔增長。實測：第 10 次 call——比完整 session Agent **慳 ~98%** tokens。配合上面嘅「**金魚腦補償協定**」——記憶短就唔再係問題。
 
 ### 4. ✅ 存在合法性（呢個 fork 存在嘅原因）
 呢個 fork **保留 Agent 身份**——仍然係真正嘅編程工具（session 管理＋Agent runtime＋工具基建）。正正因為咁——先可以算係「**編程工具**」——適用於**「僅限編程工具」**嘅月費計劃（例如 Token Plan——**明文禁止純 API 腳本**、但允許編程工具）。用呢個極簡編程工具包住軍師——**合規**——你唔係一條 bare `curl` 腳本——你係一個 coding agent。
@@ -110,7 +273,8 @@ npm install
 npm run build
 
 # 軍師（print mode）——金魚記憶＋自動刪 session
-node packages/coding-agent/dist/cli.js -p "點樣最快驗證 token 預算？" --model deepseek-chat
+# 用你嘅 FLAGSHIP 貴腦（見「腦力分工」）
+node packages/coding-agent/dist/cli.js -p "點樣最快驗證 token 預算？" --model <你嘅旗艦模型>
 ```
 
 ### 記憶模型
