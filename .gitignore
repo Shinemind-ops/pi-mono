@@ -38,3 +38,7 @@ plans/
 .pi/hf-sessions/
 .pi/hf-sessions-backup/
 collect.sh
+
+# Goldfish memory (runtime artifact)
+packages/coding-agent/last-exchange.json
+last-exchange.json

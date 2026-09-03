@@ -287,17 +287,17 @@ export class AgentSessionRuntime {
 	async dispose(): Promise<void> {
 		await emitSessionShutdownEvent(this.session.extensionRunner);
 		this.session.dispose();
-		// Goldfish mode: auto-delete session files on close
+		// 魔改（軍師版）：用完自動刪 session 檔案——金魚腦——零堆積
 		this.autoDeleteSessionFiles();
 	}
 
-	/** Delete current cwd session (goldfish — does not touch other agents) */
+	/** 魔改：刪「而家 cwd」嘅 session（用完即刪——唔影響其他 Agent） */
 	private autoDeleteSessionFiles(): void {
 		try {
 			const sessionDir = getDefaultSessionDir(this._services.cwd, this._services.agentDir);
 			rmSync(sessionDir, { recursive: true, force: true });
 		} catch {
-			// deletion failure must not break shutdown
+			// 刪失敗唔影響正常關閉
 		}
 	}
 }

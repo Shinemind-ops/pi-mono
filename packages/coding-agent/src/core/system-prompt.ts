@@ -75,7 +75,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 	}
 
 	// Build tools list based on selected tools.
-	// Advisor build: no tools — pure Q&A
+	// 軍師版：無工具——純被問
 	const tools = selectedTools || [];
 	const visibleTools = tools.filter((name) => !!toolSnippets?.[name]);
 	const toolsList =
@@ -112,7 +112,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): strin
 		}
 	}
 
-	// Always include these (advisor build: direct, concise, data-driven)
+	// Always include these（軍師版：直接、簡潔、以資料為本）
 	addGuideline("Be concise and direct");
 	addGuideline("Base answers on provided context when given");
 	addGuideline("Give clear reasoning, then actionable steps");

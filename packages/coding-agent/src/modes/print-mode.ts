@@ -98,7 +98,7 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 
 		await rebindSession();
 
-		// Goldfish memory: keep only the last exchange, per-cwd (parallel-safe)
+		// 魔改（軍師版）：2 句金魚腦記憶——按 cwd 分開（多 Agent 並行唔會串）
 		const agentDir = runtimeHost.services?.agentDir ?? "";
 		const safeCwd = `--${(runtimeHost.services?.cwd ?? "").replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
 		const exchangePath = join(agentDir, "exchanges", safeCwd, "last-exchange.json");
@@ -132,7 +132,7 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 							assistantText += content.text;
 						}
 					}
-					// Save current exchange (goldfish — used by next call)
+					// 保存今次 exchange（2 句記憶——下次 call 用）
 					if (initialMessage) {
 						writeLastExchange(exchangePath, initialMessage, assistantText);
 					}
@@ -151,7 +151,7 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 	}
 }
 
-/** Read last exchange (goldfish memory) — null if none */
+/** 魔改：讀上次 exchange（2 句記憶）——冇就 null */
 function readLastExchange(path: string): { user: string; assistant: string } | null {
 	try {
 		const raw = readFileSync(path, "utf-8");
@@ -162,12 +162,12 @@ function readLastExchange(path: string): { user: string; assistant: string } | n
 	}
 }
 
-/** Save current exchange (goldfish memory) */
+/** 魔改：保存今次 exchange（2 句記憶） */
 function writeLastExchange(path: string, user: string, assistant: string): void {
 	try {
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(path, JSON.stringify({ user, assistant }));
 	} catch {
-		// failure to write must not break normal output
+		// 寫失敗唔影響正常輸出
 	}
 }
