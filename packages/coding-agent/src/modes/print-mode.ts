@@ -99,13 +99,15 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 		await rebindSession();
 
 		// 魔改（軍師版）：2 句金魚腦記憶——按 cwd 分開（多 Agent 並行唔會串）
+		// A 方案（2026-09-04）：金魚記憶由「包住 prompt 前面」改為「放問題之後」——
+		// 令穩定 fileText（@資料包）成為 prefix 嘅一部分，DeepSeek server 自動 cache 命中（實測 0%→97%）
 		const agentDir = runtimeHost.services?.agentDir ?? "";
 		const safeCwd = `--${(runtimeHost.services?.cwd ?? "").replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
 		const exchangePath = join(agentDir, "exchanges", safeCwd, "last-exchange.json");
 		const lastExchange = readLastExchange(exchangePath);
 		let promptText = initialMessage;
 		if (lastExchange && promptText) {
-			promptText = `【上次你問】${lastExchange.user}\n【上次我答】${lastExchange.assistant}\n【今次問題】${promptText}`;
+			promptText = `${promptText}\n\n【上次你問】${lastExchange.user}\n【上次我答】${lastExchange.assistant}`;
 		}
 		if (promptText) {
 			await session.prompt(promptText, { images: initialImages });
