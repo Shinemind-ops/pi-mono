@@ -63,6 +63,43 @@ With this protocol, 軍師 always has the context it needs even though its memor
 
 ---
 
+## The cache-hit edition (緩存命中篇)
+
+> **v2026-09-04**: goldfish memory is now appended **after** your question, not wrapped around it. Stable `@file` context becomes the request prefix, so DeepSeek's automatic server-side context cache hits on repeat calls (measured 0% → 96%).
+
+**完全命中責任交回用戶手上 — full cache-hit responsibility is delegated to the caller.**
+
+DeepSeek (and most modern LLM APIs) cache the **prefix** of each request automatically — if the start of your request matches a previous request, that part is served from cache at ~1/10 the price. Nothing in 軍師 blocks that anymore. **Whether you hit the cache is now entirely up to how you call:**
+
+| Rule | Why |
+|------|-----|
+| ① Call with the **same** `@file` every time (same path, unchanged content) | Cache matches exact prefixes — a changed file is a miss |
+| ② Put the `@file` **before** your question | The file is the stable prefix; the question (always changing) sits after it |
+| ③ Make the file long enough (>1 KB ≈ a few hundred tokens) | Tiny prefixes never build a cache unit (measured: 59 tokens = 0% hit) |
+| ④ Never hand-prepend variable content (e.g. last answer) | Anything that changes every call in front = blocks the whole stable prefix |
+
+**Measured hit rates (real API calls, 2026-09-04):**
+
+| Scenario | Hit rate |
+|----------|----------|
+| First call (cold, builds cache) | 0% |
+| Second+ call — same `@file`, different question | **96%** |
+| Old build (goldfish memory in front — now fixed) | 0% |
+
+**Example — ask the same task pack three questions, pay ~96% less input on calls 2 & 3:**
+
+```bash
+node .../cli.js -p "@task-plan.md What is the biggest risk in this plan?" --model <flagship>
+node .../cli.js -p "@task-plan.md What is the key milestone in phase 2?"   --model <flagship>   # ~96% cached
+node .../cli.js -p "@task-plan.md Is the budget enough?"                    --model <flagship>   # ~96% cached
+```
+
+> Single short questions without a data pack simply have nothing to cache — that is expected, not a bug.
+
+Full caller-facing guide for agents: **[docs/cache-hit-guide.md](docs/cache-hit-guide.md)** (also available in Chinese).
+
+---
+
 ## Platform support
 
 軍師 is a **pure CLI** — any agent that can run a terminal command or subprocess can call it. No SDK, no server, no platform-specific integration needed. Known/verified agent platforms it works with:
@@ -150,9 +187,11 @@ Memory is isolated **per working directory** (per-cwd). Twenty agents can ask th
 | File | Change |
 |---|---|
 | `packages/coding-agent/src/core/system-prompt.ts` | ~112-token advisor prompt, no tools |
-| `packages/coding-agent/src/modes/print-mode.ts` | Goldfish memory (last-exchange, per-cwd) |
+| `packages/coding-agent/src/modes/print-mode.ts` | Goldfish memory (last-exchange, per-cwd) — **cache-hit edition (2026-09-04): memory appended AFTER the question so stable `@file` context hits DeepSeek prefix cache (~96%)** |
 | `packages/coding-agent/src/core/agent-session-runtime.ts` | Auto-delete session files on close (current cwd) |
 | `packages/coding-agent/test/print-mode.test.ts` | Tests synchronized (3 passed) |
+| `README.md` | Cache-hit edition section (緩存命中篇) |
+| `docs/cache-hit-guide.md` | Agent-facing cache-hit guide (中文) |
 
 ## Development
 
@@ -225,6 +264,43 @@ Question: ...
 
 ---
 
+## 緩存命中篇（cache-hit edition）
+
+> **v2026-09-04**：金魚記憶而家係 append 喺你條問題**之後**，唔再包喺問題前面。穩定嘅 `@file` context 成為 request 嘅 prefix——DeepSeek 自動 server 端 context cache 喺重複 call 時命中（實測 0% → 96%）。
+
+**完全命中責任交回用戶手上。**
+
+DeepSeek（同大部分現代 LLM API）會自動 cache 每個 request 嘅 **prefix**——如果你今次 request 嘅開頭同上次一樣，嗰段就以 ~1/10 價錢由 cache serve。軍師已經冇任何嘢阻擋 cache。**命中唔命中，而家完全由你點 call 決定：**
+
+| 規則 | 原因 |
+|------|------|
+| ① 每次 call 帶**同一份** `@檔案`（路徑不變、內容不變） | cache 係 exact prefix 匹配——檔案改咗就 miss |
+| ② `@檔案` 一定要喺問題**前面** | 檔案先係穩定 prefix；問題（每次變）坐喺後面 |
+| ③ 檔案要夠長（>1KB ≈ 幾百 tokens） | 太短 prefix 唔會建立 cache unit（實測 59 tokens = 0%） |
+| ④ 永遠唔好手動將每次變嘅內容（例如上次答覆）塞喺前面 | 前面有任何每次變嘅嘢＝擋住成個穩定 prefix |
+
+**實測命中率（真實 API call，2026-09-04）：**
+
+| 場景 | 命中率 |
+|------|--------|
+| 第一次 call（cold，建立 cache） | 0% |
+| 第二次起——同一份 `@檔案`、唔同問題 | **96%** |
+| 舊版（金魚記憶喺前面——已修正） | 0% |
+
+**範例——同一份任務資料包問三個問題，第 2、3 次 input 慳 ~96%：**
+
+```bash
+node .../cli.js -p "@任務計劃.md 呢個計劃最大風險係咩？" --model <旗艦>
+node .../cli.js -p "@任務計劃.md 第二階段最關鍵要做咩？"  --model <旗艦>   # ~96% cached
+node .../cli.js -p "@任務計劃.md 預算夠唔夠？"             --model <旗艦>   # ~96% cached
+```
+
+> 唔帶資料包嘅單發短問題本身就冇嘢可以 cache——呢個係正常，唔係 bug。
+
+完整嘅 Agent 閱讀版操作指引：**[docs/cache-hit-guide.md](docs/cache-hit-guide.md)**（中文版）。
+
+---
+
 ## 平台適配
 
 軍師係**純 CLI**——任何識行 terminal command／subprocess 嘅 Agent 都 call 到。唔使 SDK、唔使 server、唔使平台專屬整合。已知／實測可用嘅 Agent 平台：
@@ -290,9 +366,11 @@ node packages/coding-agent/dist/cli.js -p "點樣最快驗證 token 預算？" -
 | 檔案 | 改動 |
 |---|---|
 | `packages/coding-agent/src/core/system-prompt.ts` | ~112-token 軍師提示詞——無工具 |
-| `packages/coding-agent/src/modes/print-mode.ts` | 金魚記憶（最近 2 句——按 cwd） |
+| `packages/coding-agent/src/modes/print-mode.ts` | 金魚記憶（最近 2 句——按 cwd）——**緩存命中篇（2026-09-04）：記憶 append 喺問題之後，令穩定 `@file` context 命中 DeepSeek prefix cache（~96%）** |
 | `packages/coding-agent/src/core/agent-session-runtime.ts` | 關閉時自動刪 session（只刪而家 cwd） |
 | `packages/coding-agent/test/print-mode.test.ts` | 測試同步（3 passed） |
+| `README.md` | 緩存命中篇 section |
+| `docs/cache-hit-guide.md` | Agent 閱讀版緩存命中手冊（中文） |
 
 ## 開發
 見 [CONTRIBUTING.md](CONTRIBUTING.md) 同 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
