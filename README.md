@@ -89,10 +89,12 @@ DeepSeek (and most modern LLM APIs) cache the **prefix** of each request automat
 **Example — ask the same task pack three questions, pay ~96% less input on calls 2 & 3:**
 
 ```bash
-node .../cli.js -p "@task-plan.md What is the biggest risk in this plan?" --model <flagship>
-node .../cli.js -p "@task-plan.md What is the key milestone in phase 2?"   --model <flagship>   # ~96% cached
-node .../cli.js -p "@task-plan.md Is the budget enough?"                    --model <flagship>   # ~96% cached
+node .../cli.js -p "@task-plan.md" "What is the biggest risk in this plan?" --model <flagship>
+node .../cli.js -p "@task-plan.md" "What is the key milestone in phase 2?"   --model <flagship>   # ~96% cached
+node .../cli.js -p "@task-plan.md" "Is the budget enough?"                    --model <flagship>   # ~96% cached
 ```
+
+> Note: `@file` and the question are **separate arguments** — `"@file question"` as one string fails (file not found).
 
 > Single short questions without a data pack simply have nothing to cache — that is expected, not a bug.
 
@@ -290,10 +292,12 @@ DeepSeek（同大部分現代 LLM API）會自動 cache 每個 request 嘅 **pre
 **範例——同一份任務資料包問三個問題，第 2、3 次 input 慳 ~96%：**
 
 ```bash
-node .../cli.js -p "@任務計劃.md 呢個計劃最大風險係咩？" --model <旗艦>
-node .../cli.js -p "@任務計劃.md 第二階段最關鍵要做咩？"  --model <旗艦>   # ~96% cached
-node .../cli.js -p "@任務計劃.md 預算夠唔夠？"             --model <旗艦>   # ~96% cached
+node .../cli.js -p "@任務計劃.md" "呢個計劃最大風險係咩？" --model <旗艦>
+node .../cli.js -p "@任務計劃.md" "第二階段最關鍵要做咩？"  --model <旗艦>   # ~96% cached
+node .../cli.js -p "@任務計劃.md" "預算夠唔夠？"             --model <旗艦>   # ~96% cached
 ```
+
+> 注意：`@file` 同問題係**兩個獨立參數**——寫成 `"@file 問題"` 一個 string 會 File not found。
 
 > 唔帶資料包嘅單發短問題本身就冇嘢可以 cache——呢個係正常，唔係 bug。
 

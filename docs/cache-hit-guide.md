@@ -29,14 +29,16 @@ node /path/to/pi/packages/coding-agent/dist/cli.js -p "問題" --model deepseek-
 
 ```bash
 # 第一次問（會 miss，建立 cache——正常）
-node .../cli.js -p "@task-plan.md 呢個計劃最大風險係咩？" --model deepseek-chat
+node .../cli.js -p "@task-plan.md" "呢個計劃最大風險係咩？" --model deepseek-chat
 
 # 第二次問（同一檔案、唔同問題——96% 命中）
-node .../cli.js -p "@task-plan.md 第二階段最關鍵要做咩？" --model deepseek-chat
+node .../cli.js -p "@task-plan.md" "第二階段最關鍵要做咩？" --model deepseek-chat
 
 # 第三次問（仍然命中——金魚記憶每次唔同都唔擋）
-node .../cli.js -p "@task-plan.md 預算夠唔夠？" --model deepseek-chat
+node .../cli.js -p "@task-plan.md" "預算夠唔夠？" --model deepseek-chat
 ```
+
+⚠️ **@file 格式注意**：`@檔案` 同問題係**兩個獨立參數**（分開），唔好寫成 `"@檔案 問題"` 一個 string——軍師會將成個 string 當檔案路徑 → File not found。
 
 **規則（重要！）：**
 
