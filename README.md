@@ -75,7 +75,7 @@ DeepSeek (and most modern LLM APIs) cache the **prefix** of each request automat
 |------|-----|
 | ① Call with the **same** `@file` every time (same path, unchanged content) | Cache matches exact prefixes — a changed file is a miss |
 | ② Put the `@file` **before** your question | The file is the stable prefix; the question (always changing) sits after it |
-| ③ Make the file long enough (>1 KB ≈ a few hundred tokens) | Tiny prefixes never build a cache unit (measured: 59 tokens = 0% hit) |
+| ③ Make the file reasonably long | Cache thresholds are provider/model-specific (DeepSeek: ~140 tokens measured; Anthropic: 1024+ official) — tiny prefixes never build a cache unit |
 | ④ Never hand-prepend variable content (e.g. last answer) | Anything that changes every call in front = blocks the whole stable prefix |
 
 **Measured hit rates (real API calls, 2026-09-04):**
@@ -278,7 +278,7 @@ DeepSeek（同大部分現代 LLM API）會自動 cache 每個 request 嘅 **pre
 |------|------|
 | ① 每次 call 帶**同一份** `@檔案`（路徑不變、內容不變） | cache 係 exact prefix 匹配——檔案改咗就 miss |
 | ② `@檔案` 一定要喺問題**前面** | 檔案先係穩定 prefix；問題（每次變）坐喺後面 |
-| ③ 檔案要夠長（>1KB ≈ 幾百 tokens） | 太短 prefix 唔會建立 cache unit（實測 59 tokens = 0%） |
+| ③ 檔案要有返咁上下長度 | 每個供應商/模型 threshold 唔同（DeepSeek 實測 ~140t 起先開始命中、Anthropic 要 1024t+）——太短根本唔會建立 cache unit |
 | ④ 永遠唔好手動將每次變嘅內容（例如上次答覆）塞喺前面 | 前面有任何每次變嘅嘢＝擋住成個穩定 prefix |
 
 **實測命中率（真實 API call，2026-09-04）：**

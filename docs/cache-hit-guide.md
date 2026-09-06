@@ -46,7 +46,7 @@ node .../cli.js -p "@task-plan.md" "預算夠唔夠？" --model deepseek-chat
 |------|------|
 | ① 每次 call 都帶**同一份** `@檔案`（路徑不變、內容不變） | cache 係 prefix 完全匹配——檔案唔同就 miss |
 | ② `@檔案` 一定要喺問題**前面** | 檔案先係穩定 prefix；問題喺後（每次都變）唔影響檔案命中 |
-| ③ 檔案要夠長（起碼幾百 tokens，即 >1KB 中文） | 太短 prefix 唔會建立 cache unit（實測 59 tokens 全 miss） |
+| ③ 檔案要有返咁上下長度 | 每個供應商/模型 threshold 唔同（DeepSeek 實測 ~140t 起先開始命中、Anthropic 要 1024t+）——太短根本唔會建立 cache unit |
 | ④ 唔好將「上次答覆」手動塞喺問題前面 | 每次唔同嘅嘢喺前 = 擋住穩定 prefix（金魚記憶已經自動放後面，唔使理） |
 
 **命中幾多？實測數據（2026-09-04）：**
@@ -85,7 +85,7 @@ The cache-hit edition (2026-09-04) moved goldfish memory from *wrapping the prom
 
 軍師 CLI 冇直接顯示 cache 數字。想驗證可以：
 
-1. 準備一份長資料包（>1KB）
+1. 準備一份夠長嘅資料包（唔好淨係幾十字——要長到供應商肯建立 cache unit；DeepSeek 約 140 tokens 起、Anthropic 1024+）
 2. 連續問兩次（同一檔案、唔同問題）
 3. 比較兩次嘅「時間」或「成本」——第二次應該明顯平（如果 backend 有報價）
 
